@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FWALLET 1.0.0</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'SF Pro Display', -apple-system, sans-serif; }
+
+        body {
+            height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: #060200;
+            background-image: radial-gradient(circle at 15% 15%, rgba(255, 69, 0, 0.2) 0%, transparent 50%),
+                              radial-gradient(circle at 85% 85%, rgba(255, 140, 0, 0.15) 0%, transparent 50%);
+            overflow: hidden; padding: 20px;
+        }
+
+        .glass-box {
+            background: rgba(20, 5, 0, 0.55); backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 69, 0, 0.5); border-radius: 28px;
+            padding: 30px 25px; width: 100%; max-width: 420px; text-align: center;
+            box-shadow: 0 0 45px rgba(255, 69, 0, 0.35), inset 0 0 20px rgba(255, 69, 0, 0.15); 
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 85vh; 
+            overflow-y: auto; 
+        }
+
+        .glass-box::-webkit-scrollbar { width: 4px; }
+        .glass-box::-webkit-scrollbar-track { background: transparent; }
+        .glass-box::-webkit-scrollbar-thumb { background: rgba(255, 69, 0, 0.4); border-radius: 10px; }
+
+        .fade-in { animation: fadeIn 0.8s forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Shake Animation */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+
+        .id-board {
+            width: 100%; padding: 15px; margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.7); border-radius: 12px;
+            border: 2px solid rgba(255, 69, 0, 0.35); transition: 0.5s;
+            text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 12px rgba(255, 69, 0, 0.2);
+        }
+        .clickable-board { cursor: pointer; transition: transform 0.2s, box-shadow 0.5s, border-color 0.5s; }
+        .clickable-board:hover { transform: scale(1.02); }
+
+        /* Flame & Status Glow Borders */
+        .glow-black { border-color: #222222; box-shadow: 0 0 20px rgba(0, 0, 0, 0.85), inset 0 0 8px rgba(0, 0, 0, 0.6); }
+        .glow-orange { border-color: #ff7700; box-shadow: 0 0 20px #ff7700, inset 0 0 8px rgba(255, 119, 0, 0.4); }
+        .glow-gold { border-color: #ffcc00; box-shadow: 0 0 25px #ffcc00, inset 0 0 10px rgba(255, 204, 0, 0.4); }
+
+        /* Dynamic Currency Glow Styles */
+        .glow-red-text {
+            color: #ff4500 !important;
+            text-shadow: 0 0 12px rgba(255, 69, 0, 0.9), 0 0 25px rgba(255, 0, 0, 0.6);
+        }
+        .glow-gold-text {
+            color: #ffcc00 !important;
+            text-shadow: 0 0 12px rgba(255, 204, 0, 0.9), 0 0 25px rgba(212, 175, 55, 0.6);
+        }
+
+        .live-clock { color: rgba(255, 140, 0, 0.5); font-size: 10px; font-family: monospace; margin-bottom: 15px; letter-spacing: 1px; }
+        h2 { color: #fff; font-size: 30px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 4px; text-shadow: 0 0 15px rgba(255, 69, 0, 0.6); }
+        .mit-subtitle { color: rgba(255, 255, 255, 0.6); font-size: 10px; margin-bottom: 25px; letter-spacing: 1px; text-transform: uppercase; }
+
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { color: rgba(255, 255, 255, 0.5); font-size: 10px; margin-left: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        input {
+            width: 100%; padding: 15px; background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 69, 0, 0.45); border-radius: 12px;
+            color: #ffaa00; font-size: 18px; outline: none; transition: 0.3s; text-align: center; letter-spacing: 5px;
+            box-shadow: 0 0 12px rgba(255, 69, 0, 0.2), inset 0 0 5px rgba(255, 69, 0, 0.15);
+        }
+        input:focus { border-color: #ff4500; box-shadow: 0 0 20px rgba(255, 69, 0, 0.65), inset 0 0 8px rgba(255, 69, 0, 0.3); }
+        input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .login-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, #ff4500, #ff8c00); color: #fff; font-size: 13px; font-weight: 800;
+            cursor: pointer; text-transform: uppercase; transition: 0.3s;
+            margin-bottom: 10px; letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(255, 69, 0, 0.4), 0 0 8px rgba(255, 69, 0, 0.2);
+        }
+        .login-btn:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(255, 69, 0, 0.7), 0 0 12px rgba(255, 69, 0, 0.4); transform: translateY(-1px); }
+        .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .data-card {
+            background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 69, 0, 0.35);
+            padding: 12px; border-radius: 15px; margin-bottom: 12px; text-align: left;
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.2), inset 0 0 6px rgba(255, 69, 0, 0.1);
+        }
+
+        .status-badge {
+            display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: bold; margin-bottom: 5px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 2, 0, 0.96); z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .popup { 
+            background: #0c0400; border: 1px solid #ff4500; padding: 25px; border-radius: 20px; width: 100%; max-width: 380px; text-align: center; 
+            box-shadow: 0 0 40px rgba(255, 69, 0, 0.55), inset 0 0 15px rgba(255, 69, 0, 0.2); 
+        }
+        
+        .hidden { display: none !important; }
+
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid rgba(255, 69, 0, 0.2);
+            border-top: 3px solid #ff4500; border-radius: 50%;
+            margin: 20px auto; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .receipt-line { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; border-bottom: 1px dashed rgba(255,69,0,0.25); padding-bottom: 4px; }
+        .receipt-val { color: #fff; font-weight: bold; text-align: right; }
+        .receipt-lbl { color: rgba(255,255,255,0.5); text-transform: uppercase; }
+        
+        .modal-btn-group { display: flex; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="glass-box fade-in" id="main-glass-box">
+        <div id="live-time" class="live-clock">VAULT TIME: --:--:-- --</div>
+
+        <div id="loading-ui" class="hidden">
+            <div class="spinner"></div>
+            <p id="loading-msg" style="color: #ff4500; font-size: 10px; letter-spacing: 2px;">LOADING...</p>
+        </div>
+
+        <div id="intro-ui">
+            <h2>FWALLET</h2>
+            <p class="mit-subtitle">Digital User Wallet of the Fire Kingdom</p>
+            <div style="margin-top: 40px;">
+                <button class="login-btn" onclick="navWithLoading('login-ui')">LOG IN YOUR ACCOUNT</button>
+                <button class="login-btn" style="background: transparent; border: 1px solid rgba(255, 69, 0, 0.5); box-shadow: 0 0 10px rgba(255, 69, 0, 0.15);" onclick="navWithLoading('rules-ui')">FWALLET RULES</button>
+            </div>
+        </div>
+
+        <div id="rules-ui" class="hidden">
+            <h2 style="font-size: 22px;">FWALLET RULES AND REGULATIONS</h2>
+            <div style="text-align: left; color: #ccc; font-size: 11px; line-height: 1.8; margin: 20px 0;">
+                <b>RULES TO BE OBEYED</b><br>
+                <p><i>Currency Standard</i><br>
+The sovereign economic system utilizes Fire Wichtig (£W), establishing a rigid treasury rate where £W1 standardizes to 🪙25 under royal charter.<br><br>
+<i>Sovereign Security</i><br>
+Access credentials utilize an exclusive 6-digit cryptographic PIN block unique to the bearer. System parameters restrict access completely to verified account configurations.<br><br>
+<i>Transaction Logs</i><br>
+Sovereign verification maps visual handshakes for every asset clearance. Providing high-fidelity interface logs remains mandatory for all clearance verification paths.<br><br>
+<i>Prohibited Actions</i><br>
+Misuse of the wallet for gambling and other illegal purposes is hereby prohibited and your wallet shall be locked automatically for suspension.</p>
+            </div>
+            <button class="login-btn" onclick="navWithLoading('intro-ui')">BACK TO MAIN</button>
+        </div>
+
+        <div id="login-ui" class="hidden">
+            <h2>LOG IN</h2>
+            <p class="mit-subtitle">Please enter your credentials to continue</p>
+            <div class="input-group">
+                <label>FPIN</label>
+                <input type="password" id="pin" maxlength="6" placeholder="••••••">
+            </div>
+            <button class="login-btn" id="login-submit-btn" onclick="processAccess('login')">LOG IN</button>
+            <button class="login-btn" style="background: transparent; border: none; font-size: 10px; color: rgba(255,255,255,0.4); box-shadow: none;" onclick="navWithLoading('intro-ui')">BACK TO MENU</button>
+            <p id="error" style="color: #ff4500; font-size: 10px; margin-top: 15px; display: none; font-weight: bold; letter-spacing: 1px;">LOG IN FAILED, TRY AGAIN.</p>
+        </div>
+
+        <div id="dashboard" class="hidden">
+            <div id="status-area"></div>
+            
+            <div id="id-board" class="id-board clickable-board" onclick="showProfileInfo()">
+                <div id="card-id-display" style="font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-bottom: 5px;">ACCOUNT ID: ---</div>
+                <div id="dash-name" style="color: #fff; font-weight: bold; font-size: 18px; letter-spacing: 1px;">---</div>
+            </div>
+
+            <div class="data-card">
+                <label>Current Wallet Amount</label>
+                <div id="balance-emb" class="glow-red-text" style="font-size: 24px; font-weight: bold; letter-spacing: 0.5px;">£W 0.00</div>
+                <div id="balance-php" class="glow-gold-text" style="font-size: 12px;">🪙 0</div>
+            </div>
+            
+            <button class="login-btn" style="background: transparent; border: 1px solid #ff4500; color: #ff4500; font-size: 11px; margin-bottom: 10px; box-shadow: 0 0 10px rgba(255, 69, 0, 0.2);" onclick="triggerLogoutPrompt()">LOG OUT</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="notify-overlay">
+        <div class="popup" id="main-popup">
+            <h4 id="notify-title" style="color: #fff; margin-bottom: 15px; font-size: 14px; letter-spacing: 1px;">KINGDOM TERMINALS</h4>
+
+            <div id="profile-info" class="hidden" style="text-align: left; font-size: 11px; line-height: 1.8;">
+                <div class="receipt-line"><span class="receipt-lbl">User Name:</span><span id="prof-name" class="receipt-val"></span></div>
+                <div class="receipt-line"><span class="receipt-lbl">Occupation:</span><span id="prof-occ" class="receipt-val"></span></div>
+                <div class="receipt-line"><span class="receipt-lbl">Status:</span><span id="prof-status" class="receipt-val"></span></div>
+                <div class="receipt-line"><span class="receipt-lbl">PIN:</span><span id="prof-pin" class="receipt-val"></span></div>
+            </div>
+
+            <div id="logout-confirmation" class="hidden">
+                <p style="color: #ccc; font-size: 12px; margin-bottom: 10px;">Are you sure you want to log out of this system?</p>
+                <div class="modal-btn-group">
+                    <button class="login-btn" style="background: #ff4500; margin-bottom: 0;" onclick="executeSecureLogout()">LOG OUT</button>
+                    <button class="login-btn" style="background: #221100; color: #fff; margin-bottom: 0; box-shadow: 0 0 10px rgba(255, 69, 0, 0.15); border: 1px solid rgba(255, 69, 0, 0.3);" onclick="closeModals()">BACK</button>
+                </div>
+            </div>
+
+            <p id="notify-body" style="color: #ccc; font-size: 11px; line-height: 1.5;"></p>
+            <button onclick="closeModals()" id="notify-btn" class="login-btn" style="margin-top: 20px; font-size: 11px;">BACK TO DASHBOARD</button>
+        </div>
+    </div>
+
+    <script>
+        // Profiles mapped explicitly to unique 6-digit PIN blocks for standalone verification
+        const CITIZEN_ACCOUNTS = {
+            "FK-001-A16384699": { pin: "001122", crn: "001", name: "Klein Luddenviest", balance: 2576, status: "Active", occupation: "King" },
+            "FK-002-A440124828": { pin: "653877", crn: "002", name: "Annika Ophelia Winterbourne", balance: 22, status: "Active", occupation: "Princess" },
+            "FK-003-A97372990": { pin: "701150", crn: "003", name: "Achlys Flattaviore", balance: 22, status: "Active", occupation: "General" }
+        };
+
+        let currentUser = null;
+        let currentUserKey = "";
+        let loginAttempts = 0;
+        let loginLockedOut = false;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playAudioSignal(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const now = audioCtx.currentTime;
+
+            if (type === 'confirm') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(1600, now);
+                osc1.frequency.setValueAtTime(2200, now + 0.09); 
+
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(1600, now);
+                osc2.frequency.setValueAtTime(2200, now + 0.09);
+
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.4);
+                osc2.stop(now + 0.4);
+
+            } else if (type === 'error') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(25, now);
+                osc1.frequency.linearRampToValueAtTime(280, now + 0.25); 
+
+                osc2.type = 'sawtooth';
+                osc2.frequency.setValueAtTime(190, now); 
+                osc2.frequency.linearRampToValueAtTime(285, now + 0.25);
+
+                gain.gain.setValueAtTime(0.45, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.26);
+                osc2.stop(now + 0.26);
+
+            } else if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now); 
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-time').innerText = `SYSTEM TIME: ${now.toLocaleTimeString().toUpperCase()}`;
+        }
+        setInterval(updateClock, 100);
+        updateClock();
+
+        function triggerShakeAnimation(selector) {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.classList.remove('shake');
+                void el.offsetWidth; 
+                el.classList.add('shake');
+            }
+        }
+
+        function processAccess(mode) {
+            if (loginLockedOut) {
+                playAudioSignal('error');
+                return;
+            }
+
+            if (mode === 'login') {
+                const pin = document.getElementById('pin').value;
+                document.getElementById('login-ui').classList.add('hidden');
+                
+                document.getElementById('loading-msg').innerText = "VERIFYING...";
+                document.getElementById('loading-ui').classList.remove('hidden');
+
+                setTimeout(() => {
+                    const matchedKey = Object.keys(CITIZEN_ACCOUNTS).find(key => CITIZEN_ACCOUNTS[key].pin === pin);
+                    const user = CITIZEN_ACCOUNTS[matchedKey];
+
+                    if (user) {
+                        loginAttempts = 0;
+                        currentUserKey = matchedKey;
+                        playAudioSignal('confirm');
+                        currentUser = user;
+                        document.getElementById('loading-ui').classList.add('hidden');
+                        document.getElementById('dashboard').classList.remove('hidden');
+                        renderDashboard();
+                    } else {
+                        loginAttempts++;
+                        playAudioSignal('error');
+                        document.getElementById('loading-ui').classList.add('hidden');
+                        document.getElementById('login-ui').classList.remove('hidden');
+                        
+                        if (loginAttempts >= 3) {
+                            loginLockedOut = true;
+                            let secondsLeft = 15;
+                            
+                            document.getElementById('pin').disabled = true;
+                            document.getElementById('login-submit-btn').disabled = true;
+                            
+                            document.getElementById('error').innerText = `LOCKOUT ENGAGED. RETRY IN ${secondsLeft}s`;
+                            document.getElementById('error').style.display = 'block';
+
+                            showBasicModal("SECURITY FLUSH", `Intrusion alert. Core input frozen for ${secondsLeft} seconds.`);
+                            triggerShakeAnimation('#main-popup');
+
+                            const lockInterval = setInterval(() => {
+                                secondsLeft--;
+                                if (secondsLeft > 0) {
+                                    document.getElementById('error').innerText = `LOCKOUT ENGAGED. RETRY IN ${secondsLeft}s`;
+                                    if(document.getElementById('notify-title').innerText === "SECURITY FLUSH") {
+                                        document.getElementById('notify-body').innerText = `Intrusion alert. Core input frozen for ${secondsLeft} seconds.`;
+                                    }
+                                } else {
+                                    clearInterval(lockInterval);
+                                    loginLockedOut = false;
+                                    loginAttempts = 0;
+                                    document.getElementById('pin').disabled = false;
+                                    document.getElementById('login-submit-btn').disabled = false;
+                                    document.getElementById('error').style.display = 'none';
+                                    document.getElementById('pin').value = "";
+                                    if(document.getElementById('notify-title').innerText === "SECURITY FLUSH") {
+                                        closeModals();
+                                    }
+                                }
+                            }, 1000);
+                        } else {
+                            triggerShakeAnimation('#main-glass-box');
+                            document.getElementById('error').innerText = `LOG IN FAILED. FAILURE ${loginAttempts}/3`;
+                            document.getElementById('error').style.display = 'block';
+                            document.getElementById('pin').value = "";
+                        }
+                    }
+                }, 1000);
+            }
+        }
+
+        function navWithLoading(targetId) {
+            playAudioSignal('click');
+            ['intro-ui', 'rules-ui', 'login-ui', 'dashboard'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById('loading-msg').innerText = "LOADING...";
+            document.getElementById('loading-ui').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('loading-ui').classList.add('hidden');
+                document.getElementById(targetId).classList.remove('hidden');
+            }, 600);
+        }
+
+        function renderDashboard() {
+            if (!currentUser) return;
+            document.getElementById('card-id-display').innerText = `ACCOUNT ID: ${currentUserKey}`;
+            document.getElementById('dash-name').innerText = currentUser.name;
+            document.getElementById('balance-emb').innerText = `£W ${currentUser.balance.toFixed(2)}`;
+            document.getElementById('balance-php').innerText = `🪙 ${(currentUser.balance * 25).toLocaleString()}`;
+            
+            const board = document.getElementById('id-board');
+            board.classList.remove('glow-black', 'glow-orange', 'glow-gold');
+            if (currentUser.balance >= 2000) {
+                board.classList.add('glow-gold');
+            } else if (currentUser.balance >= 1100) {
+                board.classList.add('glow-orange');
+            } else {
+                board.classList.add('glow-black');
+            }
+        }
+
+        function showProfileInfo() {
+            if (!currentUser) return;
+            playAudioSignal('click');
+            document.getElementById('notify-title').innerText = "USER PROFILE";
+            
+            document.getElementById('prof-name').innerText = currentUser.name;
+            document.getElementById('prof-occ').innerText = currentUser.occupation;
+            document.getElementById('prof-pin').innerText = currentUser.pin;
+
+            // Status tier evaluation from Commoner up to Wealthy
+            let statusText = "Commoner";
+            if (currentUser.balance >= 2000) {
+                statusText = "Wealthy";
+            } else if (currentUser.balance >= 1000) {
+                statusText = "Noble";
+            } else if (currentUser.balance >= 500) {
+                statusText = "Merchant";
+            } else {
+                statusText = "Commoner";
+            }
+            document.getElementById('prof-status').innerText = statusText;
+            
+            document.getElementById('profile-info').classList.remove('hidden');
+            document.getElementById('logout-confirmation').classList.add('hidden');
+            document.getElementById('notify-body').innerText = "";
+            document.getElementById('notify-btn').style.display = "block";
+            document.getElementById('notify-overlay').style.display = "flex";
+        }
+
+        function triggerLogoutPrompt() {
+            playAudioSignal('click');
+            document.getElementById('notify-title').innerText = "LOGOUT CONFIRMATION";
+            document.getElementById('profile-info').classList.add('hidden');
+            document.getElementById('logout-confirmation').classList.remove('hidden');
+            document.getElementById('notify-body').innerText = "";
+            document.getElementById('notify-btn').style.display = "none";
+            document.getElementById('notify-overlay').style.display = "flex";
+        }
+
+        function executeSecureLogout() {
+            playAudioSignal('confirm');
+            currentUser = null;
+            currentUserKey = "";
+            document.getElementById('pin').value = "";
+            closeModals();
+            navWithLoading('intro-ui');
+        }
+
+        function closeModals() {
+            playAudioSignal('click');
+            document.getElementById('notify-overlay').style.display = "none";
+            document.getElementById('profile-info').classList.add('hidden');
+            document.getElementById('logout-confirmation').classList.add('hidden');
+        }
+
+        function showBasicModal(title, body) {
+            document.getElementById('notify-title').innerText = title;
+            document.getElementById('notify-body').innerText = body;
+            document.getElementById('profile-info').classList.add('hidden');
+            document.getElementById('logout-confirmation').classList.add('hidden');
+            document.getElementById('notify-btn').style.display = "block";
+            document.getElementById('notify-overlay').style.display = "flex";
+        }
+    </script>
+</body>
+</html>
