@@ -228,6 +228,7 @@ Misuse of the wallet for gambling and other illegal purposes is hereby prohibite
         let currentUser = null;
         let currentUserKey = "";
         let loginAttempts = 0;
+        let intrusionCount = 0;
         let loginLockedOut = false;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -322,6 +323,39 @@ Misuse of the wallet for gambling and other illegal purposes is hereby prohibite
             }
         }
 
+        // Formsubmit AJAX used to send automated background emails purely client-side.
+        // NOTE: The receiving email (mythicaadministration@gmail.com) will need to click an activation link on the very first dispatch to allow FormSubmit.
+        async function sendIntrusionEmail() {
+            const randomHash = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+            const intruderName = "ANON_" + randomHash;
+            const timeNow = new Date().toLocaleString();
+            let ipAddr = "Unknown IP";
+            
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                ipAddr = data.ip;
+            } catch (err) {
+                ipAddr = "Unavailable/Blocked";
+            }
+            
+            const subject = "SECURITY ALERT: INTRUSION DETECTED";
+            const messageBody = `INTRUSION ALERT\n\nName of intruder: ${intruderName}\nTime of intrusive login: ${timeNow}\nIP Address: ${ipAddr}\n\nNote for Admin: Please initiate advanced security measures. Multiple failed access attempts recorded.`;
+
+            fetch("https://formsubmit.co/ajax/mythicaadministration@gmail.com", {
+                method: "POST",
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    _subject: subject,
+                    _captcha: "false",
+                    message: messageBody
+                })
+            }).catch(err => console.error("Email API failed silently: ", err));
+        }
+
         function processAccess(mode) {
             if (loginLockedOut) {
                 playAudioSignal('error');
@@ -341,6 +375,7 @@ Misuse of the wallet for gambling and other illegal purposes is hereby prohibite
 
                     if (user) {
                         loginAttempts = 0;
+                        intrusionCount = 0;
                         currentUserKey = matchedKey;
                         playAudioSignal('confirm');
                         currentUser = user;
@@ -354,8 +389,24 @@ Misuse of the wallet for gambling and other illegal purposes is hereby prohibite
                         document.getElementById('login-ui').classList.remove('hidden');
                         
                         if (loginAttempts >= 3) {
+                            intrusionCount++;
+                            loginAttempts = 0;
                             loginLockedOut = true;
-                            let secondsLeft = 15;
+                            
+                            let secondsLeft;
+                            let intruderReminder = "";
+
+                            if (intrusionCount === 1) {
+                                secondsLeft = 10;
+                            } else if (intrusionCount === 2) {
+                                secondsLeft = 20;
+                            } else {
+                                secondsLeft = 60;
+                                intruderReminder = "\n\nINTRUDER REMINDER: Further unauthorized access is strictly monitored and recorded.";
+                            }
+
+                            // Trigger automatic silent email dynamically for every lock
+                            sendIntrusionEmail();
                             
                             document.getElementById('pin').disabled = true;
                             document.getElementById('login-submit-btn').disabled = true;
@@ -363,7 +414,7 @@ Misuse of the wallet for gambling and other illegal purposes is hereby prohibite
                             document.getElementById('error').innerText = `LOCKOUT ENGAGED. RETRY IN ${secondsLeft}s`;
                             document.getElementById('error').style.display = 'block';
 
-                            showBasicModal("SECURITY FLUSH", `Intrusion alert. Core input frozen for ${secondsLeft} seconds.`);
+                            showBasicModal("SECURITY FLUSH", `Intrusion alert. Core input frozen for ${secondsLeft} seconds.${intruderReminder}`);
                             triggerShakeAnimation('#main-popup');
 
                             const lockInterval = setInterval(() => {
@@ -371,12 +422,11 @@ Misuse of the wallet for gambling and other illegal purposes is hereby prohibite
                                 if (secondsLeft > 0) {
                                     document.getElementById('error').innerText = `LOCKOUT ENGAGED. RETRY IN ${secondsLeft}s`;
                                     if(document.getElementById('notify-title').innerText === "SECURITY FLUSH") {
-                                        document.getElementById('notify-body').innerText = `Intrusion alert. Core input frozen for ${secondsLeft} seconds.`;
+                                        document.getElementById('notify-body').innerText = `Intrusion alert. Core input frozen for ${secondsLeft} seconds.${intruderReminder}`;
                                     }
                                 } else {
                                     clearInterval(lockInterval);
                                     loginLockedOut = false;
-                                    loginAttempts = 0;
                                     document.getElementById('pin').disabled = false;
                                     document.getElementById('login-submit-btn').disabled = false;
                                     document.getElementById('error').style.display = 'none';
